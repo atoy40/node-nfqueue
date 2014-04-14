@@ -1,0 +1,11 @@
+{
+  "name": "nfqueue",
+  "version": "0.0.1",
+  "description": "netfilter nfqueue binding",
+  "author": "Anthony Hinsinger <anthony.hinsinger@gmail.com>",
+  "main": "./nfqueue",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/atoy40/node-nfqueue.git"
+  }
+}
