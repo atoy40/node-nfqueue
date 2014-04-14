@@ -28,13 +28,11 @@
 
 using namespace v8;
 
-static void PollAsync(uv_poll_t* handle, int status, int events);
 //static int nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfad, void *data);
 
 class nfqueue : node::ObjectWrap {
   public:
     static void Init(Handle<Object> exports);
-    struct nfq_handle* getHandle() { return handle; };
     Persistent<Function> callback;
 
   private:
@@ -46,6 +44,7 @@ class nfqueue : node::ObjectWrap {
     static Handle<Value> Open(const Arguments& args);
     static Handle<Value> Read(const Arguments& args);
 
+    static void PollAsync(uv_poll_t* handle, int status, int events);
     static int nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfad, void *data);
 
     struct nfq_handle *handle;
@@ -145,19 +144,19 @@ Handle<Value> nfqueue::Read(const Arguments& args) {
   baton->poll.data = baton;
   baton->queue = obj;
 
-  uv_poll_init_socket(uv_default_loop(), &baton->poll, nfq_fd(obj->getHandle()));
+  uv_poll_init_socket(uv_default_loop(), &baton->poll, nfq_fd(obj->handle));
   uv_poll_start(&baton->poll, UV_READABLE, PollAsync);
 
   return Undefined();
 }
 
-static void PollAsync(uv_poll_t* handle, int status, int events) {
+void nfqueue::PollAsync(uv_poll_t* handle, int status, int events) {
   char buf[65535];
   RecvBaton *baton = static_cast<RecvBaton*>(handle->data);
   nfqueue* queue = baton->queue;
 
-  int count = recv(nfq_fd(queue->getHandle()), buf, sizeof(buf), 0);
-  nfq_handle_packet(queue->getHandle(), buf, count);
+  int count = recv(nfq_fd(queue->handle), buf, sizeof(buf), 0);
+  nfq_handle_packet(queue->handle, buf, count);
   
 }
 
