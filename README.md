@@ -11,14 +11,9 @@ This small example allow one packet every two, and display IP header information
     var nfq = require('nfqueue');
     var pcap = require('pcap');
     
-    var q = new nfq.NFQueue();
     var counter = 0;
 
-    // open queue with number 1    
-    q.open(1);
-
-    // start reading the queue using the given callback
-    q.run(function(nfpacket) {
+    nfq.createQueueHandler(1, run(function(nfpacket) {
       console.log("packet received");
       console.log(JSON.stringify(nfpacket.info, null, 2));
     
