@@ -13,7 +13,7 @@ This small example allow one packet every two, and display IP header information
     
     var counter = 0;
 
-    nfq.createQueueHandler(1, run(function(nfpacket) {
+    nfq.createQueueHandler(1, function(nfpacket) {
       console.log("packet received");
       console.log(JSON.stringify(nfpacket.info, null, 2));
     
