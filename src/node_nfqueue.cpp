@@ -28,7 +28,6 @@
 
 using namespace v8;
 
-//static int nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfad, void *data);
 
 class nfqueue : node::ObjectWrap {
   public:
@@ -43,6 +42,7 @@ class nfqueue : node::ObjectWrap {
     static Handle<Value> New(const Arguments& args);
     static Handle<Value> Open(const Arguments& args);
     static Handle<Value> Read(const Arguments& args);
+    static Handle<Value> Verdict(const Arguments& args);
 
     static void PollAsync(uv_poll_t* handle, int status, int events);
     static int nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfad, void *data);
@@ -68,6 +68,7 @@ void nfqueue::Init(Handle<Object> exports) {
 
   tpl->PrototypeTemplate()->Set(String::NewSymbol("open"), FunctionTemplate::New(Open)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("read"), FunctionTemplate::New(Read)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("setVerdict"), FunctionTemplate::New(Verdict)->GetFunction());
 
   constructor = Persistent<Function>::New(tpl->GetFunction());  
   exports->Set(String::NewSymbol("NFQueue"), constructor);
@@ -182,15 +183,25 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
 
   Local<Object> p = Object::New();
   p->Set(String::NewSymbol("len"), Number::New(payload_len));
+  p->Set(String::NewSymbol("id"), Number::New(id));
   Handle<Value> argv[] = { p };
 
-  Local<Value> reply = queue->callback->Call(Context::GetCurrent()->Global(), 1, argv);
+  queue->callback->Call(Context::GetCurrent()->Global(), 1, argv);
 
-  if (!reply->IsNumber()) {
-    return nfq_set_verdict(qh, id, NF_DROP, 0, NULL);
+  return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
+}
+
+Handle<Value> nfqueue::Verdict(const Arguments& args) {
+  nfqueue* obj = ObjectWrap::Unwrap<nfqueue>(args.This());
+
+  if (args.Length() == 2) {
+    nfq_set_verdict(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), 0, NULL);
+  } else if (args.Length() == 3) {
+    nfq_set_verdict2(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), args[2]->Uint32Value(), 0, NULL);
   }
   
-  return nfq_set_verdict(qh, id, reply->Uint32Value(), 0, NULL);
+
+  return Undefined();
 }
 
 void init(Handle<Object> exports) {

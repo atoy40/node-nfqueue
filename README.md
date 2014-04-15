@@ -13,19 +13,23 @@ This small example allow one packet every two, and display IP header information
     
     var q = new nfq.NFQueue();
     var counter = 0;
-    
+
+    // open queue with number 1    
     q.open(1);
+
+    // start reading the queue using the given callback
+    q.run(function(nfpacket) {
+      console.log("packet received, size=" + nfpacket.info.len);
     
-    q.run(function(info, payload) {
-      console.log("packet received, size=" + info.len);
-    
-      var packet = pcap.decode.ip(payload, 0);
+      // decode the raw payload using pcap library
+      var packet = pcap.decode.ip(nfpacket.payload, 0);
       console.log(" ip src=" + packet.saddr);
       console.log(" ip dst=" + packet.daddr);
       console.log(" ip proto=" + packet.protocol_name);
     
-      return (counter++ % 2) ? nfq.NF_DROP : nfq.NF_ACCEPT;
-    });
+      // set packet verdict. Second parameter set the packet mark.
+      nfpacket.setVerdict((counter++ % 2) ? nfq.NF_DROP : nfq.NF_ACCEPT);
+    });    
 
 ## Author and license
 

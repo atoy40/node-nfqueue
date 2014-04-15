@@ -20,11 +20,32 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 var binding = require('./build/Release/nfqueue');
 
-var NFQueue = function() {
-  this.opened = false;
-  this.bindings = new binding.NFQueue();
-};
+/* Constant */
+var i = 0;
+exports.NF_DROP = i++;
+exports.NF_ACCEPT = i++;
+exports.NF_STOLEN = i++;
+exports.NF_QUEUE = i++;
+exports.NF_REPEAT = i++;
+exports.NF_STOP = i++;
 
+/* NFQueue class */
+var NFQueue = function() {
+  var me = this;
+  me.opened = false;
+  me.bindings = new binding.NFQueue();
+
+  var NFQueuePacket = function(info, payload) {
+    this.info = info;
+    this.payload = payload;
+  };
+
+  NFQueuePacket.prototype.setVerdict = function(verdict, mark) {
+    me.bindings.setVerdict(this.info.id, verdict, mark);
+  };
+
+  me.NFQueuePacket = NFQueuePacket;
+};
 
 NFQueue.prototype.open = function(number) {
   // the javascript Buffer to pass packet payload
@@ -38,7 +59,7 @@ NFQueue.prototype.run = function(callback) {
   var me = this;
 
   var packet_callback = function(info) {
-    return callback(info, me.buf);
+    callback(new me.NFQueuePacket(info, me.buf));
   }
 
   this.bindings.read(packet_callback);
@@ -46,11 +67,3 @@ NFQueue.prototype.run = function(callback) {
 
 exports.NFQueue = NFQueue;
 
-/* Constant */
-var i = 0;
-exports.NF_DROP = i++;
-exports.NF_ACCEPT = i++;
-exports.NF_STOLEN = i++;
-exports.NF_QUEUE = i++;
-exports.NF_REPEAT = i++;
-exports.NF_STOP = i++;
