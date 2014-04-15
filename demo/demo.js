@@ -1,12 +1,10 @@
 var nfq = require('../nfqueue');
 var pcap = require('pcap');
 
-var q = new nfq.NFQueue();
 var counter = 0;
 
-q.open(1);
 
-q.run(function(nfpacket) {
+nfq.createQueueHandler(1, function(nfpacket) {
   console.log("packet received");
   console.log(JSON.stringify(nfpacket.info, null, 2));
 

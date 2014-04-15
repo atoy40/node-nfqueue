@@ -66,3 +66,12 @@ NFQueue.prototype.run = function(callback) {
 
 exports.NFQueue = NFQueue;
 
+exports.createQueueHandler = function(num, callback) {
+  var nfq = new NFQueue();
+
+  nfq.open(num);
+  nfq.run(callback);
+
+  return nfq;
+};
+
