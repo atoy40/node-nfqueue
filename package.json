@@ -1,6 +1,6 @@
 {
   "name": "nfqueue",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "netfilter nfqueue binding",
   "author": "Anthony Hinsinger <anthony.hinsinger@gmail.com>",
   "main": "./nfqueue",
@@ -9,8 +9,10 @@
     "url": "git://github.com/atoy40/node-nfqueue.git"
   },
   "keywords": [
+    "nfqueue",
+    "queue",
+    "linux",
     "netfilter",
-    "iptables",
-    "queue"
+    "iptables"
   ]
 }
