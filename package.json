@@ -7,5 +7,10 @@
   "repository": {
     "type": "git",
     "url": "git://github.com/atoy40/node-nfqueue.git"
-  }
+  },
+  "keywords": [
+    "netfilter",
+    "iptables",
+    "queue"
+  ]
 }

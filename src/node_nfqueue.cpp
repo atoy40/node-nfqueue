@@ -49,6 +49,7 @@ class nfqueue : node::ObjectWrap {
 
     struct nfq_handle *handle;
     struct nfq_q_handle *qhandle;
+    struct nlif_handle *nlifh;
     char *buffer_data;
     size_t buffer_length;
 };
@@ -132,6 +133,14 @@ Handle<Value> nfqueue::Open(const Arguments& args) {
     return scope.Close(Undefined());
   }
 
+  // open and query interface table
+  obj->nlifh = nlif_open();
+  if (obj->nlifh == NULL) {
+    ThrowException(Exception::TypeError(String::New("Unable to open an interface table handle")));
+    return scope.Close(Undefined());
+  }
+  nlif_query(obj->nlifh);
+
   return scope.Close(Undefined());
 }
 
@@ -166,11 +175,14 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
   int id = 0;
   struct nfqnl_msg_packet_hdr *ph;
   int payload_len;
-  unsigned char *payload_data;
+  unsigned char* payload_data;
+  char devname[IFNAMSIZ];
+  struct timeval tv;
 
   ph = nfq_get_msg_packet_hdr(nfad);
   payload_len = nfq_get_payload(nfad, &payload_data);
 
+  // get id
   if (ph)
     id = ntohl(ph->packet_id);
 
@@ -184,6 +196,22 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
   Local<Object> p = Object::New();
   p->Set(String::NewSymbol("len"), Number::New(payload_len));
   p->Set(String::NewSymbol("id"), Number::New(id));
+  p->Set(String::NewSymbol("nfmark"), Number::New(nfq_get_nfmark(nfad)));
+  if (nfq_get_timestamp(nfad, &tv) == 0)
+    p->Set(String::NewSymbol("timestamp"), Number::New(tv.tv_sec));
+  p->Set(String::NewSymbol("indev"), Number::New(nfq_get_indev(nfad)));
+  p->Set(String::NewSymbol("physindev"), Number::New(nfq_get_physindev(nfad)));
+  p->Set(String::NewSymbol("outdev"), Number::New(nfq_get_outdev(nfad)));
+  p->Set(String::NewSymbol("physoutdev"), Number::New(nfq_get_physoutdev(nfad)));
+  nfq_get_indev_name(queue->nlifh, nfad, devname);
+  p->Set(String::NewSymbol("indev_name"), String::New(devname));
+  nfq_get_physindev_name(queue->nlifh, nfad, devname);
+  p->Set(String::NewSymbol("physintdev_name"), String::New(devname));
+  nfq_get_outdev_name(queue->nlifh, nfad, devname);
+  p->Set(String::NewSymbol("outdev_name"), String::New(devname));
+  nfq_get_physoutdev_name(queue->nlifh, nfad, devname);
+  p->Set(String::NewSymbol("physoutdev_name"), String::New(devname));
+  
   Handle<Value> argv[] = { p };
 
   queue->callback->Call(Context::GetCurrent()->Global(), 1, argv);

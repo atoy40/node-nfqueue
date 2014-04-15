@@ -7,7 +7,7 @@ var counter = 0;
 q.open(1);
 
 q.run(function(nfpacket) {
-  console.log("packet received, size=" + nfpacket.info.len);
+  console.log(JSON.stringify(nfpacket.info, null, 2));
 
   var packet = pcap.decode.ip(nfpacket.payload, 0);
   console.log(" ip src=" + packet.saddr);
