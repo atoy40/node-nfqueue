@@ -6,7 +6,7 @@ This is done asynchronously using libuv poll.
 
 ## Example
 
-This small example allow one packet every two, and display IP header informations using the pcap binding to decode the payload (payload is a javascript Buffer object)
+This small example allow one packet every two, and display IP header informations using the pcap binding to decode the payload (payload is provided as a javascript Buffer object by the wrapper, and this is what pcap library handle too)
 
     var nfq = require('nfqueue');
     var pcap = require('pcap');
@@ -19,7 +19,8 @@ This small example allow one packet every two, and display IP header information
 
     // start reading the queue using the given callback
     q.run(function(nfpacket) {
-      console.log("packet received, size=" + nfpacket.info.len);
+      console.log("packet received");
+      console.log(JSON.stringify(nfpacket.info, null, 2));
     
       // decode the raw payload using pcap library
       var packet = pcap.decode.ip(nfpacket.payload, 0);
@@ -29,7 +30,27 @@ This small example allow one packet every two, and display IP header information
     
       // set packet verdict. Second parameter set the packet mark.
       nfpacket.setVerdict((counter++ % 2) ? nfq.NF_DROP : nfq.NF_ACCEPT);
-    });    
+    });
+
+For an icmp packet, and a nfqueuing in INPUT chain of filter table, it'll output something looking like :
+
+    packet received
+    {
+      "len": 84,
+      "id": 3,
+      "nfmark": 0,
+      "indev": 2,
+      "physindev": 0,
+      "outdev": 0,
+      "physoutdev": 0,
+      "indev_name": "eth0",
+      "physintdev_name": "*",
+      "outdev_name": "*",
+      "physoutdev_name": "*"
+    }
+     ip src=192.168.1.136
+     ip dst=192.168.1.155
+     ip proto=ICMP
 
 ## Author and license
 
