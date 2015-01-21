@@ -1,6 +1,6 @@
 {
   "name": "nfqueue",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "description": "netfilter nfqueue binding",
   "author": "Anthony Hinsinger <anthony.hinsinger@gmail.com>",
   "main": "./nfqueue",

@@ -41,7 +41,10 @@ var NFQueue = function() {
   };
 
   NFQueuePacket.prototype.setVerdict = function(verdict, mark) {
-    me.bindings.setVerdict(this.info.id, verdict, mark);
+    if (mark)
+      me.bindings.setVerdict(this.info.id, verdict, mark);
+    else
+      me.bindings.setVerdict(this.info.id, verdict);
   };
 
   me.NFQueuePacket = NFQueuePacket;

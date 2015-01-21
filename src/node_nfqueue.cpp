@@ -225,7 +225,7 @@ Handle<Value> nfqueue::Verdict(const Arguments& args) {
   if (args.Length() == 2) {
     nfq_set_verdict(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), 0, NULL);
   } else if (args.Length() == 3) {
-    nfq_set_verdict_mark(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), args[2]->Uint32Value(), 0, NULL);
+    nfq_set_verdict2(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), args[2]->Uint32Value(), 0, NULL);
   }
   
 
