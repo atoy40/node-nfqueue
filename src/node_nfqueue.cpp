@@ -214,9 +214,9 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
   
   Handle<Value> argv[] = { p };
 
-  queue->callback->Call(Context::GetCurrent()->Global(), 1, argv);
+  Local<Value> ret = queue->callback->Call(Context::GetCurrent()->Global(), 1, argv);
 
-  return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
+  return ret->Int32Value();
 }
 
 Handle<Value> nfqueue::Verdict(const Arguments& args) {
@@ -225,7 +225,7 @@ Handle<Value> nfqueue::Verdict(const Arguments& args) {
   if (args.Length() == 2) {
     nfq_set_verdict(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), 0, NULL);
   } else if (args.Length() == 3) {
-    nfq_set_verdict2(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), args[2]->Uint32Value(), 0, NULL);
+    nfq_set_verdict_mark(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), args[2]->Uint32Value(), 0, NULL);
   }
   
 
