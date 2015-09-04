@@ -71,7 +71,7 @@ void nfqueue::Init(Handle<Object> exports) {
   tpl->PrototypeTemplate()->Set(String::NewSymbol("read"), FunctionTemplate::New(Read)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setVerdict"), FunctionTemplate::New(Verdict)->GetFunction());
 
-  constructor = Persistent<Function>::New(tpl->GetFunction());  
+  constructor = Persistent<Function>::New(tpl->GetFunction());
   exports->Set(String::NewSymbol("NFQueue"), constructor);
 }
 
@@ -167,7 +167,6 @@ void nfqueue::PollAsync(uv_poll_t* handle, int status, int events) {
 
   int count = recv(nfq_fd(queue->handle), buf, sizeof(buf), 0);
   nfq_handle_packet(queue->handle, buf, count);
-  
 }
 
 int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfad, void *data) {
@@ -211,7 +210,7 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
   p->Set(String::NewSymbol("outdev_name"), String::New(devname));
   nfq_get_physoutdev_name(queue->nlifh, nfad, devname);
   p->Set(String::NewSymbol("physoutdev_name"), String::New(devname));
-  
+
   Handle<Value> argv[] = { p };
 
   Local<Value> ret = queue->callback->Call(Context::GetCurrent()->Global(), 1, argv);
@@ -221,13 +220,23 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
 
 Handle<Value> nfqueue::Verdict(const Arguments& args) {
   nfqueue* obj = ObjectWrap::Unwrap<nfqueue>(args.This());
+  const unsigned char* buff_data;
+  size_t buff_length;
 
-  if (args.Length() == 2) {
-    nfq_set_verdict(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), 0, NULL);
-  } else if (args.Length() == 3) {
-    nfq_set_verdict2(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), args[2]->Uint32Value(), 0, NULL);
+  if (!args[args.Length() - 1]->IsNull()) {
+    Local<Object> buff_obj = args[args.Length() - 1]->ToObject();
+    buff_data = (unsigned char*)node::Buffer::Data(buff_obj);
+    buff_length = node::Buffer::Length(buff_obj);
+  } else {
+    buff_data = NULL;
+    buff_length = 0;
   }
-  
+
+  if (args.Length() == 3) {
+    nfq_set_verdict(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), buff_length, buff_data);
+  } else if (args.Length() == 4) {
+    nfq_set_verdict2(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), args[2]->Uint32Value(), buff_length, buff_data);
+  }
 
   return Undefined();
 }

@@ -9,22 +9,26 @@ This is done asynchronously using libuv poll.
 This small example allow one packet every two, and display IP header informations using the pcap binding to decode the payload (payload is provided as a javascript Buffer object by the wrapper, and this is what pcap library handle too)
 
     var nfq = require('nfqueue');
-    var pcap = require('pcap');
-    
+    var IPv4 = require('pcap/decode/ipv4');
     var counter = 0;
 
     nfq.createQueueHandler(1, function(nfpacket) {
-      console.log("packet received");
+      console.log("-- packet received --");
       console.log(JSON.stringify(nfpacket.info, null, 2));
-    
-      // decode the raw payload using pcap library
-      var packet = pcap.decode.ip(nfpacket.payload, 0);
-      console.log(" ip src=" + packet.saddr);
-      console.log(" ip dst=" + packet.daddr);
-      console.log(" ip proto=" + packet.protocol_name);
-    
-      // set packet verdict. Second parameter set the packet mark.
+
+      // Decode the raw payload using pcap library
+      var packet = new IPv4().decode(nfpacket.payload, 0);
+      // Protocol numbers, for example: 1 - ICMP, 6 - TCP, 17 - UDP
+      console.log(
+        "src=" + packet.saddr + ", dst=" + packet.daddr
+        + ", proto=" + packet.protocol
+      );
+
+      // Set packet verdict. Second parameter set the packet mark.
       nfpacket.setVerdict((counter++ % 2) ? nfq.NF_DROP : nfq.NF_ACCEPT);
+
+      // Or modify packet and set updated payload
+      // nfpacket.setVerdict(nfq.NF_ACCEPT, null, nfpacket.payload);
     });
 
 For an icmp packet, and a nfqueuing in INPUT chain of filter table, it'll output something looking like :
@@ -43,9 +47,7 @@ For an icmp packet, and a nfqueuing in INPUT chain of filter table, it'll output
       "outdev_name": "*",
       "physoutdev_name": "*"
     }
-     ip src=192.168.1.136
-     ip dst=192.168.1.155
-     ip proto=ICMP
+    src=10.33.15.1, dst=10.0.2.15, proto=1
 
 ## Author and license
 

@@ -40,11 +40,12 @@ var NFQueue = function() {
     this.payload = payload;
   };
 
-  NFQueuePacket.prototype.setVerdict = function(verdict, mark) {
+  NFQueuePacket.prototype.setVerdict = function(verdict, mark, buffer) {
+    buffer = typeof buffer !== 'undefined' ? buffer : null;
     if (mark)
-      me.bindings.setVerdict(this.info.id, verdict, mark);
+      me.bindings.setVerdict(this.info.id, verdict, mark, buffer);
     else
-      me.bindings.setVerdict(this.info.id, verdict);
+      me.bindings.setVerdict(this.info.id, verdict, buffer);
   };
 
   me.NFQueuePacket = NFQueuePacket;
@@ -77,4 +78,3 @@ exports.createQueueHandler = function(num, callback) {
 
   return nfq;
 };
-
