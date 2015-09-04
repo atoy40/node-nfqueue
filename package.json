@@ -1,8 +1,14 @@
 {
   "name": "nfqueue",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "netfilter nfqueue binding",
-  "author": "Anthony Hinsinger <anthony.hinsinger@gmail.com>",
+  "author": {
+    "name": "Anthony Hinsinger",
+    "email": "anthony.hinsinger@gmail.com"
+  },
+  "contributors": [
+    { "name": "Aleksandr Komlev" }
+  ],
   "main": "./nfqueue",
   "repository": {
     "type": "git",
