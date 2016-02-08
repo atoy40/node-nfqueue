@@ -49,6 +49,10 @@ For an icmp packet, and a nfqueuing in INPUT chain of filter table, it'll output
     }
     src=10.33.15.1, dst=10.0.2.15, proto=1
 
+Be careful, you must be root to open nfqueue handles. Here is an iptables command example to add a rule sending icmp to nfqueue #1 :
+
+    sudo iptables -I INPUT 1 -p icmp -j NFQUEUE --queue-num 1
+
 ## Author and license
 
 Copyright (C) 2014  Anthony Hinsinger

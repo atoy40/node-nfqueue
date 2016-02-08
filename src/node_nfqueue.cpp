@@ -86,7 +86,7 @@ NAN_METHOD(nfqueue::New) {
     info.GetReturnValue().Set(info.This());
   } else {
     // Invoked as plain function `MyObject(...)`, turn into construct call.
-    Local<v8::Function> cons = Nan::New<Function>(constructor);
+    Local<Function> cons = Nan::New<Function>(constructor);
     info.GetReturnValue().Set(cons->NewInstance(0, NULL));
   }
 }
@@ -180,7 +180,7 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
     id = ntohl(ph->packet_id);
 
   // copy payload into a buffer
-  Nan::MaybeLocal<v8::Object> buff = Nan::CopyBuffer((const char*)payload_data, payload_len);
+  Nan::MaybeLocal<Object> buff = Nan::CopyBuffer((const char*)payload_data, payload_len);
 
   Local<Object> p = Nan::New<Object>();
   p->Set(Nan::New("len").ToLocalChecked(), Nan::New<Number>(payload_len));
@@ -200,11 +200,10 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
   p->Set(Nan::New("outdev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
   nfq_get_physoutdev_name(queue->nlifh, nfad, devname);
   p->Set(Nan::New("physoutdev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
-  p->Set(Nan::New("payload").ToLocalChecked(), buff.ToLocalChecked());
 
-  Handle<Value> argv[] = { p };
+  Handle<Value> argv[] = { p, buff.ToLocalChecked() };
 
-  Local<Value> ret = queue->callback->Call(Context::GetCurrent()->Global(), 1, argv);
+  Local<Value> ret = queue->callback->Call(Context::GetCurrent()->Global(), 2, argv);
 
   return ret->Int32Value();
 }
