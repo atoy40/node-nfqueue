@@ -18,6 +18,7 @@
  */
 
 #include <node.h>
+#include <nan.h>
 #include <node_buffer.h>
 #include <node_version.h>
 #include <libnetfilter_queue/libnetfilter_queue.h>
@@ -29,20 +30,20 @@
 using namespace v8;
 
 
-class nfqueue : node::ObjectWrap {
+class nfqueue : public Nan::ObjectWrap {
   public:
-    static void Init(Handle<Object> exports);
+    static void Init(Local<Object> exports);
     Persistent<Function> callback;
 
   private:
     nfqueue() {}
     ~nfqueue() {}
 
-    static v8::Persistent<v8::Function> constructor;
-    static Handle<Value> New(const Arguments& args);
-    static Handle<Value> Open(const Arguments& args);
-    static Handle<Value> Read(const Arguments& args);
-    static Handle<Value> Verdict(const Arguments& args);
+    static Nan::Persistent<Function> constructor;
+    static NAN_METHOD(New);
+    static NAN_METHOD(Open);
+    static NAN_METHOD(Read);
+    static NAN_METHOD(Verdict);
 
     static void PollAsync(uv_poll_t* handle, int status, int events);
     static int nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfad, void *data);
@@ -59,95 +60,88 @@ struct RecvBaton {
   nfqueue *queue;
 };
 
-Persistent<Function> nfqueue::constructor;
+Nan::Persistent<Function> nfqueue::constructor;
 
-void nfqueue::Init(Handle<Object> exports) {
+void nfqueue::Init(Local<Object> exports) {
+  Nan::HandleScope scope;
+
   // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
-  tpl->SetClassName(String::NewSymbol("NFQueue"));
+  Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(New);
+  tpl->SetClassName(Nan::New("NFQueue").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("open"), FunctionTemplate::New(Open)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("read"), FunctionTemplate::New(Read)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("setVerdict"), FunctionTemplate::New(Verdict)->GetFunction());
+  Nan::SetPrototypeMethod(tpl, "open", Open);
+  Nan::SetPrototypeMethod(tpl, "read", Read);
+  Nan::SetPrototypeMethod(tpl, "setVerdict", Verdict);
 
-  constructor = Persistent<Function>::New(tpl->GetFunction());
-  exports->Set(String::NewSymbol("NFQueue"), constructor);
+  constructor.Reset(tpl->GetFunction());
+  exports->Set(Nan::New("NFQueue").ToLocalChecked(), tpl->GetFunction());
 }
 
-Handle<Value> nfqueue::New(const Arguments& args) {
-  HandleScope scope;
-
-  nfqueue* nfqueue_instance = new nfqueue();
-  nfqueue_instance->Wrap(args.This());
-
-  return args.This();
+NAN_METHOD(nfqueue::New) {
+  if (info.IsConstructCall()) {
+    // Invoked as constructor: `new MyObject(...)`
+    nfqueue* nfqueue_instance = new nfqueue();
+    nfqueue_instance->Wrap(info.This());
+    info.GetReturnValue().Set(info.This());
+  } else {
+    // Invoked as plain function `MyObject(...)`, turn into construct call.
+    Local<v8::Function> cons = Nan::New<Function>(constructor);
+    info.GetReturnValue().Set(cons->NewInstance(0, NULL));
+  }
 }
 
-Handle<Value> nfqueue::Open(const Arguments& args) {
-  HandleScope scope;
+NAN_METHOD(nfqueue::Open) {
+  Nan::HandleScope scope;
 
-  nfqueue* obj = ObjectWrap::Unwrap<nfqueue>(args.This());
+  nfqueue* obj = Nan::ObjectWrap::Unwrap<nfqueue>(info.This());
 
-  if (!args[0]->IsNumber()) {
-    ThrowException(Exception::TypeError(String::New("Bad queue number")));
-    return scope.Close(Undefined());
+  if (!info[0]->IsNumber()) {
+    Nan::ThrowTypeError("Bad queue number");
+    return;
   }
-
-  if (!node::Buffer::HasInstance(args[1])) {
-    ThrowException(Exception::TypeError(String::New("2nd argument must be a Buffer instance")));
-    return scope.Close(Undefined());
-  }
-
-#if NODE_VERSION_AT_LEAST(0,3,0)
-  Local<Object> buffer_obj = args[1]->ToObject();
-  obj->buffer_data = node::Buffer::Data(buffer_obj);
-  obj->buffer_length = node::Buffer::Length(buffer_obj);
-#else
-  node::Buffer *buffer_obj = ObjectWrap::Unwrap<node::Buffer>(args[1]->ToObject());
-  obj->buffer_data = buffer_obj->data();
-  obj->buffer_length = buffer_obj->length();
-#endif
 
   obj->handle = nfq_open();
   if (obj->handle == NULL) {
-    ThrowException(Exception::TypeError(String::New("Unable to open queue")));
-    return scope.Close(Undefined());
+    Nan::ThrowTypeError("Unable to open queue");
+    return;
   }
 
   if (nfq_unbind_pf(obj->handle, AF_INET)) {
-    ThrowException(Exception::TypeError(String::New("Unable to unbind queue")));
-    return scope.Close(Undefined());
+    Nan::ThrowTypeError("Unable to unbind queue");
+    return;
   }
   nfq_bind_pf(obj->handle, AF_INET);
 
-  obj->qhandle = nfq_create_queue(obj->handle, args[0]->Uint32Value(), &nf_callback, (void*)obj);
+  obj->qhandle = nfq_create_queue(obj->handle, info[0]->Uint32Value(), &nf_callback, (void*)obj);
 
   if (obj->qhandle == NULL) {
-    ThrowException(Exception::TypeError(String::New("Unable to create queue")));
-    return scope.Close(Undefined());
+    Nan::ThrowTypeError("Unable to create queue");
+    return;
   }
 
   if (nfq_set_mode(obj->qhandle, NFQNL_COPY_PACKET, 0xffff) < 0) {
-    ThrowException(Exception::TypeError(String::New("Unable to set queue mode")));
-    return scope.Close(Undefined());
+    Nan::ThrowTypeError("Unable to set queue mode");
+    return;
   }
 
   // open and query interface table
   obj->nlifh = nlif_open();
   if (obj->nlifh == NULL) {
-    ThrowException(Exception::TypeError(String::New("Unable to open an interface table handle")));
-    return scope.Close(Undefined());
+    Nan::ThrowTypeError("Unable to open an interface table handle");
+    return;
   }
   nlif_query(obj->nlifh);
 
-  return scope.Close(Undefined());
+  return;
 }
 
-Handle<Value> nfqueue::Read(const Arguments& args) {
-  nfqueue* obj = ObjectWrap::Unwrap<nfqueue>(args.This());
+NAN_METHOD(nfqueue::Read) {
+  Nan::HandleScope scope;
 
-  Handle<Function> cb = Handle<Function>::Cast(args[0]);
+  nfqueue* obj = Nan::ObjectWrap::Unwrap<nfqueue>(info.This());
+
+  Handle<Function> cb = Handle<Function>::Cast(info[0]);
   obj->callback = Persistent<Function>::New(cb);
 
   RecvBaton *baton = new RecvBaton();
@@ -157,7 +151,7 @@ Handle<Value> nfqueue::Read(const Arguments& args) {
   uv_poll_init_socket(uv_default_loop(), &baton->poll, nfq_fd(obj->handle));
   uv_poll_start(&baton->poll, UV_READABLE, PollAsync);
 
-  return Undefined();
+  return;
 }
 
 void nfqueue::PollAsync(uv_poll_t* handle, int status, int events) {
@@ -185,31 +179,28 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
   if (ph)
     id = ntohl(ph->packet_id);
 
-  // copy payload
-  size_t copy_len = payload_len;
-  if (copy_len > queue->buffer_length) {
-    copy_len = queue->buffer_length;
-  }
-  memcpy(queue->buffer_data, payload_data, copy_len);
+  // copy payload into a buffer
+  Nan::MaybeLocal<v8::Object> buff = Nan::CopyBuffer((const char*)payload_data, payload_len);
 
-  Local<Object> p = Object::New();
-  p->Set(String::NewSymbol("len"), Number::New(payload_len));
-  p->Set(String::NewSymbol("id"), Number::New(id));
-  p->Set(String::NewSymbol("nfmark"), Number::New(nfq_get_nfmark(nfad)));
+  Local<Object> p = Nan::New<Object>();
+  p->Set(Nan::New("len").ToLocalChecked(), Nan::New<Number>(payload_len));
+  p->Set(Nan::New("id").ToLocalChecked(), Nan::New<Number>(id));
+  p->Set(Nan::New("nfmark").ToLocalChecked(), Nan::New<Number>(nfq_get_nfmark(nfad)));
   if (nfq_get_timestamp(nfad, &tv) == 0)
-    p->Set(String::NewSymbol("timestamp"), Number::New(tv.tv_sec));
-  p->Set(String::NewSymbol("indev"), Number::New(nfq_get_indev(nfad)));
-  p->Set(String::NewSymbol("physindev"), Number::New(nfq_get_physindev(nfad)));
-  p->Set(String::NewSymbol("outdev"), Number::New(nfq_get_outdev(nfad)));
-  p->Set(String::NewSymbol("physoutdev"), Number::New(nfq_get_physoutdev(nfad)));
+    p->Set(Nan::New("timestamp").ToLocalChecked(), Nan::New<Number>(tv.tv_sec));
+  p->Set(Nan::New("indev").ToLocalChecked(), Nan::New<Number>(nfq_get_indev(nfad)));
+  p->Set(Nan::New("physindev").ToLocalChecked(), Nan::New<Number>(nfq_get_physindev(nfad)));
+  p->Set(Nan::New("outdev").ToLocalChecked(), Nan::New<Number>(nfq_get_outdev(nfad)));
+  p->Set(Nan::New("physoutdev").ToLocalChecked(), Nan::New<Number>(nfq_get_physoutdev(nfad)));
   nfq_get_indev_name(queue->nlifh, nfad, devname);
-  p->Set(String::NewSymbol("indev_name"), String::New(devname));
+  p->Set(Nan::New("indev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
   nfq_get_physindev_name(queue->nlifh, nfad, devname);
-  p->Set(String::NewSymbol("physintdev_name"), String::New(devname));
+  p->Set(Nan::New("physindev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
   nfq_get_outdev_name(queue->nlifh, nfad, devname);
-  p->Set(String::NewSymbol("outdev_name"), String::New(devname));
+  p->Set(Nan::New("outdev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
   nfq_get_physoutdev_name(queue->nlifh, nfad, devname);
-  p->Set(String::NewSymbol("physoutdev_name"), String::New(devname));
+  p->Set(Nan::New("physoutdev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
+  p->Set(Nan::New("payload").ToLocalChecked(), buff.ToLocalChecked());
 
   Handle<Value> argv[] = { p };
 
@@ -218,13 +209,15 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
   return ret->Int32Value();
 }
 
-Handle<Value> nfqueue::Verdict(const Arguments& args) {
-  nfqueue* obj = ObjectWrap::Unwrap<nfqueue>(args.This());
+NAN_METHOD(nfqueue::Verdict) {
+  Nan::HandleScope scope;
+
+  nfqueue* obj = Nan::ObjectWrap::Unwrap<nfqueue>(info.This());
   const unsigned char* buff_data;
   size_t buff_length;
 
-  if (!args[args.Length() - 1]->IsNull()) {
-    Local<Object> buff_obj = args[args.Length() - 1]->ToObject();
+  if (!info[info.Length() - 1]->IsNull()) {
+    Local<Object> buff_obj = info[info.Length() - 1]->ToObject();
     buff_data = (unsigned char*)node::Buffer::Data(buff_obj);
     buff_length = node::Buffer::Length(buff_obj);
   } else {
@@ -232,17 +225,17 @@ Handle<Value> nfqueue::Verdict(const Arguments& args) {
     buff_length = 0;
   }
 
-  if (args.Length() == 3) {
-    nfq_set_verdict(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), buff_length, buff_data);
-  } else if (args.Length() == 4) {
-    nfq_set_verdict2(obj->qhandle, args[0]->Uint32Value(), args[1]->Uint32Value(), args[2]->Uint32Value(), buff_length, buff_data);
+  if (info.Length() == 3) {
+    nfq_set_verdict(obj->qhandle, info[0]->Uint32Value(), info[1]->Uint32Value(), buff_length, buff_data);
+  } else if (info.Length() == 4) {
+    nfq_set_verdict2(obj->qhandle, info[0]->Uint32Value(), info[1]->Uint32Value(), info[2]->Uint32Value(), buff_length, buff_data);
   }
 
-  return Undefined();
+  return;
 }
 
-void init(Handle<Object> exports) {
+void initAll(Local<Object> exports) {
   nfqueue::Init(exports);
 }
 
-NODE_MODULE(nfqueue, init)
+NODE_MODULE(nfqueue, initAll)

@@ -7,7 +7,9 @@
     "email": "anthony.hinsinger@gmail.com"
   },
   "contributors": [
-    { "name": "Aleksandr Komlev" }
+    {
+      "name": "Aleksandr Komlev"
+    }
   ],
   "main": "./nfqueue",
   "repository": {
@@ -20,5 +22,8 @@
     "linux",
     "netfilter",
     "iptables"
-  ]
+  ],
+  "dependencies": {
+    "nan": "^2.2.0"
+  }
 }

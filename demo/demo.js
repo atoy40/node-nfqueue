@@ -6,7 +6,7 @@ var counter = 0;
 
 nfq.createQueueHandler(1, function(nfpacket) {
   console.log("packet received");
-  console.log(JSON.stringify(nfpacket.info, null, 2));
+  //console.log(JSON.stringify(nfpack, null, 2));
 
   var packet = pcap.decode.ip(nfpacket.payload, 0);
   console.log(" ip src=" + packet.saddr);

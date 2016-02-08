@@ -35,9 +35,9 @@ var NFQueue = function() {
   me.bindings = new binding.NFQueue();
 
   /* NFQueuePacket class */
-  var NFQueuePacket = function(info, payload) {
+  var NFQueuePacket = function(info) {
     this.info = info;
-    this.payload = payload;
+    this.payload = info.payload;
   };
 
   NFQueuePacket.prototype.setVerdict = function(verdict, mark, buffer) {
@@ -52,20 +52,15 @@ var NFQueue = function() {
 };
 
 NFQueue.prototype.open = function(number) {
-  this.buf = new Buffer(65535);
   this.bindings.open(number, this.buf);
   this.opened = true;
 };
 
 NFQueue.prototype.run = function(callback) {
-
   var me = this;
-
-  var packet_callback = function(info) {
-    callback(new me.NFQueuePacket(info, me.buf));
-  }
-
-  this.bindings.read(packet_callback);
+  this.bindings.read(function(info) {
+    callback(new me.NFQueuePacket(info));
+  });
 };
 
 exports.NFQueue = NFQueue;
