@@ -33,7 +33,7 @@ using namespace v8;
 class nfqueue : public Nan::ObjectWrap {
   public:
     static void Init(Local<Object> exports);
-    Persistent<Function> callback;
+    Nan::Callback callback;
 
   private:
     nfqueue() {}
@@ -141,8 +141,7 @@ NAN_METHOD(nfqueue::Read) {
 
   nfqueue* obj = Nan::ObjectWrap::Unwrap<nfqueue>(info.This());
 
-  Handle<Function> cb = Handle<Function>::Cast(info[0]);
-  obj->callback = Persistent<Function>::New(cb);
+  obj->callback.SetFunction(Local<Function>::Cast(info[0]));
 
   RecvBaton *baton = new RecvBaton();
   baton->poll.data = baton;
@@ -201,9 +200,9 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
   nfq_get_physoutdev_name(queue->nlifh, nfad, devname);
   p->Set(Nan::New("physoutdev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
 
-  Handle<Value> argv[] = { p, buff.ToLocalChecked() };
+  Local<Value> argv[] = { p, buff.ToLocalChecked() };
 
-  Local<Value> ret = queue->callback->Call(Context::GetCurrent()->Global(), 2, argv);
+  Local<Value> ret = queue->callback.Call(2, argv);
 
   return ret->Int32Value();
 }
