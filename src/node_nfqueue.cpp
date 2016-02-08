@@ -79,6 +79,8 @@ void nfqueue::Init(Local<Object> exports) {
 }
 
 NAN_METHOD(nfqueue::New) {
+  Nan::HandleScope scope;
+  
   if (info.IsConstructCall()) {
     // Invoked as constructor: `new MyObject(...)`
     nfqueue* nfqueue_instance = new nfqueue();
@@ -163,6 +165,8 @@ void nfqueue::PollAsync(uv_poll_t* handle, int status, int events) {
 }
 
 int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfad, void *data) {
+  Nan::HandleScope scope;
+
   nfqueue* queue = (nfqueue*)data;
   int id = 0;
   struct nfqnl_msg_packet_hdr *ph;
