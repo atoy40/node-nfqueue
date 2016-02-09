@@ -1,7 +1,7 @@
 {
   "name": "nfqueue",
-  "version": "0.2.0",
-  "description": "netfilter nfqueue binding",
+  "version": "0.3.0",
+  "description": "Netfilter nfqueue binding",
   "author": {
     "name": "Anthony Hinsinger",
     "email": "anthony.hinsinger@gmail.com"
