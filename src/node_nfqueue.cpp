@@ -25,6 +25,7 @@
 #include <arpa/inet.h>
 #include <linux/netfilter.h>
 #include <linux/ip.h>
+#include <sys/socket.h>
 #include <string.h>
 
 using namespace v8;
@@ -80,7 +81,7 @@ void nfqueue::Init(Local<Object> exports) {
 
 NAN_METHOD(nfqueue::New) {
   Nan::HandleScope scope;
-  
+
   if (info.IsConstructCall()) {
     // Invoked as constructor: `new MyObject(...)`
     nfqueue* nfqueue_instance = new nfqueue();
@@ -116,6 +117,12 @@ NAN_METHOD(nfqueue::Open) {
   nfq_bind_pf(obj->handle, AF_INET);
 
   obj->qhandle = nfq_create_queue(obj->handle, info[0]->Uint32Value(), &nf_callback, (void*)obj);
+  // Set socket buffer size
+  nfnl_rcvbufsiz(nfq_nfnlh(obj->handle), info[1]->Uint32Value());
+  // To avoid socket destroy with recvfrom(...) = -1 ENOBUFS (No buffer space available) we will
+  // set NETLINK_NO_ENOBUFS socket option (requires Linux kernel >= 2.6.30).
+  // http://www.netfilter.org/projects/libnetfilter_queue/doxygen/index.html
+  setsockopt(nfnl_fd(nfq_nfnlh(obj->handle)), SOL_NETLINK, NETLINK_NO_ENOBUFS, 0, sizeof(int));
 
   if (obj->qhandle == NULL) {
     Nan::ThrowTypeError("Unable to create queue");
