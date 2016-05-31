@@ -122,7 +122,8 @@ NAN_METHOD(nfqueue::Open) {
   // To avoid socket destroy with recvfrom(...) = -1 ENOBUFS (No buffer space available) we will
   // set NETLINK_NO_ENOBUFS socket option (requires Linux kernel >= 2.6.30).
   // http://www.netfilter.org/projects/libnetfilter_queue/doxygen/index.html
-  setsockopt(nfnl_fd(nfq_nfnlh(obj->handle)), SOL_NETLINK, NETLINK_NO_ENOBUFS, 0, sizeof(int));
+  int enobuf_value = 1;
+  setsockopt(nfnl_fd(nfq_nfnlh(obj->handle)), SOL_NETLINK, NETLINK_NO_ENOBUFS, &enobuf_value, sizeof(enobuf_value));
 
   if (obj->qhandle == NULL) {
     Nan::ThrowTypeError("Unable to create queue");
