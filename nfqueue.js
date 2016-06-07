@@ -51,8 +51,8 @@ var NFQueue = function() {
   me.NFQueuePacket = NFQueuePacket;
 };
 
-NFQueue.prototype.open = function(number) {
-  this.bindings.open(number, this.buf);
+NFQueue.prototype.open = function(num, buf) {
+  this.bindings.open(num, buf);
   this.opened = true;
 };
 
@@ -65,10 +65,11 @@ NFQueue.prototype.run = function(callback) {
 
 exports.NFQueue = NFQueue;
 
-exports.createQueueHandler = function(num, callback) {
+exports.createQueueHandler = function(num, buf, callback) {
+  if (!buf) { buf = 65535; }
   var nfq = new NFQueue();
 
-  nfq.open(num);
+  nfq.open(num, buf);
   nfq.run(callback);
 
   return nfq;
