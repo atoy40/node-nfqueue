@@ -66,7 +66,11 @@ NFQueue.prototype.run = function(callback) {
 exports.NFQueue = NFQueue;
 
 exports.createQueueHandler = function(num, buf, callback) {
-  if (!buf) { buf = 65535; }
+  if (typeof callback === 'undefined' && typeof buf === 'function') {
+    callback = buf;
+    buf = 65535;
+  };
+  
   var nfq = new NFQueue();
 
   nfq.open(num, buf);
