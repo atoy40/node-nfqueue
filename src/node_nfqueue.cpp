@@ -75,8 +75,8 @@ void nfqueue::Init(Local<Object> exports) {
   Nan::SetPrototypeMethod(tpl, "read", Read);
   Nan::SetPrototypeMethod(tpl, "setVerdict", Verdict);
 
-  constructor.Reset(tpl->GetFunction());
-  exports->Set(Nan::New("NFQueue").ToLocalChecked(), tpl->GetFunction());
+  constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(exports, Nan::New("NFQueue").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
 }
 
 NAN_METHOD(nfqueue::New) {
@@ -90,7 +90,7 @@ NAN_METHOD(nfqueue::New) {
   } else {
     // Invoked as plain function `MyObject(...)`, turn into construct call.
     Local<Function> cons = Nan::New<Function>(constructor);
-    info.GetReturnValue().Set(cons->NewInstance(0, NULL));
+    info.GetReturnValue().Set(Nan::NewInstance(cons, 0, NULL).ToLocalChecked());
   }
 }
 
@@ -116,9 +116,9 @@ NAN_METHOD(nfqueue::Open) {
   }
   nfq_bind_pf(obj->handle, AF_INET);
 
-  obj->qhandle = nfq_create_queue(obj->handle, info[0]->Uint32Value(), &nf_callback, (void*)obj);
+  obj->qhandle = nfq_create_queue(obj->handle, info[0]->Uint32Value(Nan::GetCurrentContext()).ToChecked(), &nf_callback, (void*)obj);
   // Set socket buffer size
-  nfnl_rcvbufsiz(nfq_nfnlh(obj->handle), info[1]->Uint32Value());
+  nfnl_rcvbufsiz(nfq_nfnlh(obj->handle), info[1]->Uint32Value(Nan::GetCurrentContext()).ToChecked());
   // To avoid socket destroy with recvfrom(...) = -1 ENOBUFS (No buffer space available) we will
   // set NETLINK_NO_ENOBUFS socket option (requires Linux kernel >= 2.6.30).
   // http://www.netfilter.org/projects/libnetfilter_queue/doxygen/index.html
@@ -194,29 +194,29 @@ int nfqueue::nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct
   Nan::MaybeLocal<Object> buff = Nan::CopyBuffer((const char*)payload_data, payload_len);
 
   Local<Object> p = Nan::New<Object>();
-  p->Set(Nan::New("len").ToLocalChecked(), Nan::New<Number>(payload_len));
-  p->Set(Nan::New("id").ToLocalChecked(), Nan::New<Number>(id));
-  p->Set(Nan::New("nfmark").ToLocalChecked(), Nan::New<Number>(nfq_get_nfmark(nfad)));
+  Nan::Set(p, Nan::New("len").ToLocalChecked(), Nan::New<Number>(payload_len));
+  Nan::Set(p, Nan::New("id").ToLocalChecked(), Nan::New<Number>(id));
+  Nan::Set(p, Nan::New("nfmark").ToLocalChecked(), Nan::New<Number>(nfq_get_nfmark(nfad)));
   if (nfq_get_timestamp(nfad, &tv) == 0)
-    p->Set(Nan::New("timestamp").ToLocalChecked(), Nan::New<Number>(tv.tv_sec));
-  p->Set(Nan::New("indev").ToLocalChecked(), Nan::New<Number>(nfq_get_indev(nfad)));
-  p->Set(Nan::New("physindev").ToLocalChecked(), Nan::New<Number>(nfq_get_physindev(nfad)));
-  p->Set(Nan::New("outdev").ToLocalChecked(), Nan::New<Number>(nfq_get_outdev(nfad)));
-  p->Set(Nan::New("physoutdev").ToLocalChecked(), Nan::New<Number>(nfq_get_physoutdev(nfad)));
+    Nan::Set(p, Nan::New("timestamp").ToLocalChecked(), Nan::New<Number>(tv.tv_sec));
+  Nan::Set(p, Nan::New("indev").ToLocalChecked(), Nan::New<Number>(nfq_get_indev(nfad)));
+  Nan::Set(p, Nan::New("physindev").ToLocalChecked(), Nan::New<Number>(nfq_get_physindev(nfad)));
+  Nan::Set(p, Nan::New("outdev").ToLocalChecked(), Nan::New<Number>(nfq_get_outdev(nfad)));
+  Nan::Set(p, Nan::New("physoutdev").ToLocalChecked(), Nan::New<Number>(nfq_get_physoutdev(nfad)));
   nfq_get_indev_name(queue->nlifh, nfad, devname);
-  p->Set(Nan::New("indev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
+  Nan::Set(p, Nan::New("indev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
   nfq_get_physindev_name(queue->nlifh, nfad, devname);
-  p->Set(Nan::New("physindev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
+  Nan::Set(p, Nan::New("physindev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
   nfq_get_outdev_name(queue->nlifh, nfad, devname);
-  p->Set(Nan::New("outdev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
+  Nan::Set(p, Nan::New("outdev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
   nfq_get_physoutdev_name(queue->nlifh, nfad, devname);
-  p->Set(Nan::New("physoutdev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
+  Nan::Set(p, Nan::New("physoutdev_name").ToLocalChecked(), Nan::New<String>(devname).ToLocalChecked());
 
   Local<Value> argv[] = { p, buff.ToLocalChecked() };
 
   Local<Value> ret = queue->callback.Call(2, argv);
 
-  return ret->Int32Value();
+  return ret->Int32Value(Nan::GetCurrentContext()).ToChecked();
 }
 
 NAN_METHOD(nfqueue::Verdict) {
@@ -227,7 +227,7 @@ NAN_METHOD(nfqueue::Verdict) {
   size_t buff_length;
 
   if (!info[info.Length() - 1]->IsNull()) {
-    Local<Object> buff_obj = info[info.Length() - 1]->ToObject();
+    Local<Object> buff_obj = info[info.Length() - 1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
     buff_data = (unsigned char*)node::Buffer::Data(buff_obj);
     buff_length = node::Buffer::Length(buff_obj);
   } else {
@@ -236,9 +236,9 @@ NAN_METHOD(nfqueue::Verdict) {
   }
 
   if (info.Length() == 3) {
-    nfq_set_verdict(obj->qhandle, info[0]->Uint32Value(), info[1]->Uint32Value(), buff_length, buff_data);
+    nfq_set_verdict(obj->qhandle, info[0]->Uint32Value(Nan::GetCurrentContext()).ToChecked(), info[1]->Uint32Value(Nan::GetCurrentContext()).ToChecked(), buff_length, buff_data);
   } else if (info.Length() == 4) {
-    nfq_set_verdict2(obj->qhandle, info[0]->Uint32Value(), info[1]->Uint32Value(), info[2]->Uint32Value(), buff_length, buff_data);
+    nfq_set_verdict2(obj->qhandle, info[0]->Uint32Value(Nan::GetCurrentContext()).ToChecked(), info[1]->Uint32Value(Nan::GetCurrentContext()).ToChecked(), info[2]->Uint32Value(Nan::GetCurrentContext()).ToChecked(), buff_length, buff_data);
   }
 
   return;
